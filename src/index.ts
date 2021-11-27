@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import { readFile } from 'fs/promises';
-import fetch, { RequestInit, Response } from 'node-fetch';
+import fetch, { RequestInit, Response, AbortError } from 'node-fetch';
 import { Msg, Narrow } from 'zulip-js';
-import { exec, sleep } from './utils.js';
+import { exec, formatTimestamp, parseTime, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 
 type IdsCommand = { type: 'ids'; user: string; ids: string[] };
@@ -13,6 +13,8 @@ type RecentCommand = {
   count: number;
   with_casual?: boolean;
   before_epoch?: number;
+  after_epoch?: number;
+  max_advantage?: number;
 };
 type Command = { type: 'help' } | { type: 'invalid'; reason: string } | IdsCommand | RecentCommand;
 
@@ -37,19 +39,28 @@ const parseCmd = (msg: Msg): Command => {
 
   if (args.some((a) => a.toLowerCase() === 'recent')) {
     let cmd = { type: 'recent', user } as Partial<RecentCommand>;
+    let match;
     for (const arg of args.map((a) => a.toLowerCase())) {
       if (arg === 'recent') {
       } else if (['bullet', 'blitz', 'rapid', 'classical'].includes(arg)) cmd.variant = arg;
       else if (arg === '+casual') cmd.with_casual = true;
       else if (/^\d+$/.test(arg)) cmd.count = parseInt(arg, 10);
-      else {
-        const match = /^before=(\d+)$/.exec(arg);
-        if (match) cmd.before_epoch = parseInt(match[1], 10);
-        else return invalid(`Invalid parameter: ${arg}`);
-      }
+      else if ((match = arg.match(/^advantage<(\d+)$/))) cmd.max_advantage = parseInt(match[1], 10);
+      else if ((match = arg.match(/^time(<|>)(.+)$/))) {
+        const [_, op, timeStr] = match;
+        const time = parseTime(timeStr);
+        if (!time || isNaN(time)) return invalid(`Invalid date/time format: ${timeStr}`);
+        if (time > Date.parse('2100-01-01'))
+          return invalid(`Date is too far in the future (${formatTimestamp(time)})`);
+        if (time < Date.parse('2010-01-01'))
+          return invalid(`Date is too far in the past (${formatTimestamp(time)})`);
+        if (op === '<') cmd.before_epoch = time;
+        else cmd.after_epoch = time;
+      } else return invalid(`Invalid parameter: \`${arg}\``);
     }
     if (!('variant' in cmd)) return invalid('No variant specified');
     if (!('count' in cmd)) return invalid('No game count specified');
+    if (cmd.count > 100) return invalid('Max count has to be <100');
     return cmd as RecentCommand;
   } else {
     const gameIds = args.map((id) =>
@@ -78,7 +89,7 @@ const parseCmd = (msg: Msg): Command => {
   const zulip = await Zulip.new();
 
   const handleInvalid = async (msg: Msg, reason: string): Promise<void> => {
-    await zulip.reply(msg, `:cross_mark: ${reason} Use \`@**cr** help\` for usage instructions.`);
+    await zulip.reply(msg, `:cross_mark: ${reason}. Use \`@**cr** help\` for usage instructions.`);
   };
 
   const handleHelp = async (msg: Msg): Promise<void> => {
@@ -90,7 +101,11 @@ const parseCmd = (msg: Msg): Command => {
         '- `@**cr** thibault https://lichess.org/abcdefgh`: Run CR report on Thibault with the linked game.\n' +
         "- `@**cr** thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported speeds are `bullet`, `blitz`, `rapid`, and `classical`.\n" +
         '- `@**cr** thibault recent 20 blitz +casual`: Same but include casual games.\n' +
-        '- `@**cr** thibault recent 20 blitz before=1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n' +
+        '- `@**cr** thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n' +
+        '- `@**cr** thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
+        '- `@**cr** thibault recent 20 blitz time>2021-11-03`: Same but use up to 20 last games after the 3rd November 2021.\n' +
+        '- `@**cr** thibault recent 20 blitz time>2d`: Same but use up to 20 last games during the last 2 days.\n' +
+        '- `@**cr** thibault recent 20 blitz advantage<100`: Same but only include games where Thibault has no more than 100 rating over his opponent.\n' +
         '\nParameters for recent games can be passed in arbitrary order.'
     );
   };
@@ -99,11 +114,13 @@ const parseCmd = (msg: Msg): Command => {
     msg: Msg,
     cmd: IdsCommand | RecentCommand,
     url: string,
-    options?: RequestInit
+    options: RequestInit,
+    handleResponse: (res: Response, abortCtrl: AbortController, pgnPath: string) => Promise<void>
   ) => {
     let res: Response;
+    const abortCtrl = new AbortController();
     for (let retried = false; !retried; retried = true) {
-      res = await fetch(url, options);
+      res = await fetch(url, { ...options, signal: abortCtrl.signal });
       if (!res.ok) {
         if (res.status === 429 && !retried) {
           await zulip.reply(msg, ':time_ticking: Rate-limited. Waiting for 10 minutes.');
@@ -118,12 +135,12 @@ const parseCmd = (msg: Msg): Command => {
     const date = new Date().toISOString().replace('T', '--').replace(/:|\./g, '-').replace('Z', '');
     const reportName = `${date}--${cmd.user}`;
     const pgnPath = `pgn/${reportName}.pgn`;
-    const fileStream = fs.createWriteStream(pgnPath);
-    await new Promise((resolve, reject) => {
-      res.body.pipe(fileStream);
-      res.body.on('error', reject);
-      fileStream.on('finish', resolve);
-    });
+
+    try {
+      await handleResponse(res, abortCtrl, pgnPath);
+    } catch (error) {
+      if (!(error instanceof AbortError)) throw error;
+    }
 
     const reportPath = `reports/${reportName}.txt`;
     await exec(`${process.env.CR_CMD} ${pgnPath} ${reportPath}`);
@@ -143,20 +160,55 @@ const parseCmd = (msg: Msg): Command => {
   };
 
   const handleIds = async (msg: Msg, cmd: IdsCommand): Promise<void> => {
-    await doCR(msg, cmd, 'https://lichess.org/games/export/_ids', {
-      method: 'post',
-      body: cmd.ids.join(','),
-    });
+    await doCR(
+      msg,
+      cmd,
+      'https://lichess.org/games/export/_ids',
+      {
+        method: 'post',
+        body: cmd.ids.join(','),
+      },
+      pipeToFile
+    );
   };
 
   const handelRecent = async (msg: Msg, cmd: RecentCommand): Promise<void> => {
     const params = new URLSearchParams();
     params.append('perfType', cmd.variant);
-    params.append('max', cmd.count.toString());
+    if (cmd.max_advantage) params.append('max', (cmd.count * 5).toString());
+    else params.append('max', cmd.count.toString());
     if (cmd.before_epoch) params.append('until', `${cmd.before_epoch}000`);
+    if (cmd.after_epoch) params.append('since', `${cmd.after_epoch}000`);
     if (!cmd.with_casual) params.append('rated', 'true');
 
-    await doCR(msg, cmd, `https://lichess.org/api/games/user/${cmd.user}?${params}`);
+    if (cmd.max_advantage) {
+      params.append('pgnInJson', 'true');
+      await doCR(
+        msg,
+        cmd,
+        `https://lichess.org/api/games/user/${cmd.user}?${params}`,
+        {
+          headers: {
+            Accept: 'application/x-ndjson',
+          },
+        },
+        pipeNjdsonToFile((o) => {
+          const playerColor =
+            o.players.white.user.id === cmd.user.toLowerCase() ? 'white' : 'black';
+          const player = o.players[playerColor];
+          const opponent = o.players[playerColor === 'white' ? 'black' : 'white'];
+          if (opponent.provisional && cmd.max_advantage < 2000) return;
+          if (player.rating - opponent.rating < cmd.max_advantage) return o.pgn;
+        }, cmd.count)
+      );
+    } else
+      await doCR(
+        msg,
+        cmd,
+        `https://lichess.org/api/games/user/${cmd.user}?${params}`,
+        {},
+        pipeToFile
+      );
   };
 
   const msgHandler = async (msg: Msg): Promise<void> => {
