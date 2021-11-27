@@ -1,5 +1,14 @@
 declare module 'zulip-js' {
-  export type HttpMethod = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'TRACE' | 'OPTIONS' | 'CONNECT' | 'PATCH';
+  export type HttpMethod =
+    | 'GET'
+    | 'HEAD'
+    | 'POST'
+    | 'PUT'
+    | 'DELETE'
+    | 'TRACE'
+    | 'OPTIONS'
+    | 'CONNECT'
+    | 'PATCH';
   export interface Params {
     [key: string]: any;
     [key: number]: any;
@@ -130,7 +139,11 @@ declare module 'zulip-js' {
 
   export type InitialConfig = ZuliprcConfig | Pick<Config, 'realm'>;
 
-  export function callEndpoint(endpoint: string, method: HttpMethod, params: Params): Promise<unknown>;
+  export function callEndpoint(
+    endpoint: string,
+    method: HttpMethod,
+    params: Params
+  ): Promise<unknown>;
 
   export default function zulip(initialConfig: Partial<InitialConfig>): Promise<ZulipClient>;
 }
