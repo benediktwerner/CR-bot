@@ -35,10 +35,11 @@ const parseCmd = (msg: Msg): Command => {
   if (!/^[a-zA-Z0-9_-]+$/.test(user)) return invalid('Bad username');
   if (args.length === 0) return invalid('Missing parameters');
 
-  if (args[0].toLowerCase() === 'recent') {
+  if (args.some((a) => a.toLowerCase() === 'recent')) {
     let cmd = { type: 'recent', user } as Partial<RecentCommand>;
     for (const arg of args.map((a) => a.toLowerCase())) {
-      if (['bullet', 'blitz', 'rapid', 'classical'].includes(arg)) cmd.variant = arg;
+      if (arg === 'recent') {
+      } else if (['bullet', 'blitz', 'rapid', 'classical'].includes(arg)) cmd.variant = arg;
       else if (arg === '+casual') cmd.with_casual = true;
       else if (/^\d+$/.test(arg)) cmd.count = parseInt(arg, 10);
       else {
@@ -94,7 +95,12 @@ const parseCmd = (msg: Msg): Command => {
     );
   };
 
-  const doCR = async (msg: Msg, cmd: IdsCommand | RecentCommand, url: string, options?: RequestInit) => {
+  const doCR = async (
+    msg: Msg,
+    cmd: IdsCommand | RecentCommand,
+    url: string,
+    options?: RequestInit
+  ) => {
     let res: Response;
     for (let retried = false; !retried; retried = true) {
       res = await fetch(url, options);
