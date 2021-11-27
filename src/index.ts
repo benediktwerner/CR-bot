@@ -72,9 +72,12 @@ import { exec } from './utils.js';
       await exec(`${process.env.CR_CMD} ${pgnPath} ${reportPath}`);
 
       const report = await readFile(reportPath, { encoding: 'ascii' });
-      const match = report.match(new RegExp(`(${user.toLowerCase()}[\s\S]*?)\n\n`));
+      const match = report.match(new RegExp(`(${user.toLowerCase()}.*?)\n\n`, 's'));
       if (match) {
-        await zulip.reply(msg, `@**${msg.sender_full_name}** CR report on /${user} completed:\n\n${match[1]}`);
+        await zulip.reply(
+          msg,
+          `@**${msg.sender_full_name}** CR report on /${user} completed:\n\n\`\`\`\n${match[1]}\n\`\`\``
+        );
         await zulip.react(msg, 'check');
       } else {
         console.log(`Failed to find report about ${user} in CR output:\n${report}`);
