@@ -2,6 +2,7 @@
 
 import type { ApiResponse, Dest, Msg, Narrow, ZulipClient } from 'zulip-js';
 import zulip from 'zulip-js';
+import { MsgHandler } from './handler.js';
 import { sleep } from './utils.js';
 
 export class Zulip {
@@ -13,7 +14,8 @@ export class Zulip {
       ...dest,
       content: text,
     });
-  sendToUser = async (id: number, text: string) => await this.send({ type: 'private', to: [id] }, text);
+  sendToUser = async (id: number, text: string) =>
+    await this.send({ type: 'private', to: [id] }, text);
   reply = async (to: Msg, text: string) => await this.send(msgToDest(to), text);
   react = async (to: Msg | number, emoji: string) =>
     await this.client.reactions.add({
@@ -30,7 +32,7 @@ export class Zulip {
     return me.full_name;
   };
 
-  eventLoop = async (narrow: Narrow[], msgHandler: (msg: Msg) => Promise<void>) => {
+  eventLoop = async (narrow: Narrow[], msgHandler: MsgHandler) => {
     const q = await assertSuccess(
       this.client.queues.register({
         event_types: ['message'],
@@ -62,7 +64,7 @@ export class Zulip {
               // console.log('Zulip heartbeat');
               break;
             case 'message':
-              if (event.message.sender_id !== me.user_id) await msgHandler(event.message);
+              if (event.message.sender_id !== me.user_id) await msgHandler.handle(event.message);
               break;
             // case 'reaction':
             //   if (event.user_id !== me.user_id) await handleReaction(event);
