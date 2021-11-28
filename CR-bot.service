@@ -1,0 +1,14 @@
+[Unit]
+Description=Chess Reanalysis Bot
+After=network.target
+
+[Service]
+Type=simple
+User=cr
+Environment=NODE_VERSION=17
+WorkingDirectory=/home/cr/CR-bot/
+ExecStart=/home/cr/.nvm/nvm-exec npm start
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
