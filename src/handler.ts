@@ -73,6 +73,7 @@ export class MsgHandler {
     await exec(
       `${config.python_bin} ${path.join(
         __dirname,
+        '..',
         'ChessReanalysis',
         'main.py'
       )} ${pgnPath} ${reportPath}`
