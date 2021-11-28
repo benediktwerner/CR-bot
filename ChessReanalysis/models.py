@@ -2,6 +2,7 @@ import os
 
 from peewee import *
 
+os.makedirs("db", exist_ok=True)
 db = SqliteDatabase(os.path.join("db", "data.sqlite3"))
 
 
