@@ -1,8 +1,13 @@
-import { promisify } from 'util';
 import { exec as nodeExec } from 'child_process';
 import * as fs from 'fs';
-import { pipeline } from 'stream';
 import type { Response } from 'node-fetch';
+import { dirname } from 'path';
+import { pipeline } from 'stream';
+import { fileURLToPath } from 'url';
+import { promisify } from 'util';
+
+export const __filename = fileURLToPath(import.meta.url);
+export const __dirname = dirname(__filename);
 
 export const sleep = promisify(setTimeout);
 

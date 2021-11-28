@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { IdsCommand, parseCmd, RecentCommand } from './parser.js';
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
+import { __dirname } from './utils.js';
 
 export class MsgHandler {
   constructor(private z: Zulip) {
