@@ -1,7 +1,9 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import { readFile } from 'fs/promises';
 import fetch, { AbortError, RequestInit, Response } from 'node-fetch';
 import { Msg } from 'zulip-js';
+import { config } from './config.js';
 import { IdsCommand, parseCmd, RecentCommand } from './parser.js';
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
@@ -67,7 +69,13 @@ export class MsgHandler {
     }
 
     const reportPath = `reports/${reportName}.txt`;
-    await exec(`${process.env.CR_CMD} ${pgnPath} ${reportPath}`);
+    await exec(
+      `${config.python_bin} ${path.join(
+        __dirname,
+        'ChessReanalysis',
+        'main.py'
+      )} ${pgnPath} ${reportPath}`
+    );
 
     const report = await readFile(reportPath, { encoding: 'ascii' });
     const match = report.match(new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's'));

@@ -1,0 +1,2 @@
+python-chess==0.31.3
+peewee==2.10.0
