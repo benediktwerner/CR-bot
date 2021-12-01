@@ -14,8 +14,7 @@ export class Zulip {
       ...dest,
       content: text,
     });
-  sendToUser = async (id: number, text: string) =>
-    await this.send({ type: 'private', to: [id] }, text);
+  sendToUser = async (id: number, text: string) => await this.send({ type: 'private', to: [id] }, text);
   reply = async (to: Msg, text: string) => await this.send(msgToDest(to), text);
   react = async (to: Msg | number, emoji: string) =>
     await this.client.reactions.add({
