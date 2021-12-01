@@ -16,7 +16,7 @@ export class MsgHandler {
   }
 
   handleInvalid = async (msg: Msg, reason: string): Promise<void> => {
-    await this.z.reply(msg, `:cross_mark: ${reason}. Use \`@**cr** help\` for usage instructions.`);
+    await this.z.reply(msg, `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`);
   };
 
   handleHelp = async (msg: Msg): Promise<void> => {
