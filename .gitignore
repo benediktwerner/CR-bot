@@ -8,6 +8,7 @@
 /node_modules/
 /dist/
 /zuliprc
+/zuliprc_test
 
 /.venv/
 /cr_env/

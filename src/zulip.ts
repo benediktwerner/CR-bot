@@ -7,7 +7,7 @@ import { sleep } from './utils.js';
 
 export class Zulip {
   private constructor(public client: ZulipClient) {}
-  static new = async () => new Zulip(await zulip({ zuliprc: 'zuliprc' }));
+  static new = async (zuliprc: string) => new Zulip(await zulip({ zuliprc }));
 
   send = async (dest: Dest, text: string) =>
     await this.client.messages.send({
