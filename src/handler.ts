@@ -30,10 +30,10 @@ export class MsgHandler {
         '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
         '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n' +
         '- `@cr thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
-        '- `@cr thibault recent 20 blitz time>2021-11-03`: Same but use up to 20 last games after the 3rd November 2021.\n' +
-        '- `@cr thibault recent 20 blitz time>2d`: Same but use up to 20 last games during the last 2 days.\n' +
-        '- `@cr thibault recent 20 blitz advantage<100`: Same but only include games where Thibault has no more than 100 rating over his opponent.\n' +
-        '\nParameters for recent games can be passed in arbitrary order.'
+        "- `@cr thibault recent 20 blitz time>2021-11-03`: Only consider max 20 last games up to the 3rd November 2021.\n" +
+        '- `@cr thibault recent 20 blitz time>2d`: Only consider up to 20 last games during the last 2 days.\n' +
+        '- `@cr thibault recent 20 blitz advantage<100`: Only include games where Thibault has no more than 100 rating over his opponent.\n' +
+        '\nParameters for recent games can be combined and passed in arbitrary order.'
     );
   };
 
