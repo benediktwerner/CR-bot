@@ -20,22 +20,19 @@ export class MsgHandler {
   };
 
   handleHelp = async (msg: Msg): Promise<void> => {
-    const name = await this.z.botName();
-    const ping = `@**${name}**`;
     await this.z.reply(
       msg,
       'Usage:\n' +
-        `- \`${ping} help\`: Show this help.\n` +
-        `- \`${ping} thibault abcdefgh ijklmnop\`: Run CR report on Thibault with game IDs abcdefgh and ijklmnop. You can add up to 100 game IDs.\n` +
-        `- \`${ping} thibault https://lichess.org/abcdefgh\`: Run CR report on Thibault with the linked game.\n` +
-        `- \`${ping} thibault recent 20 blitz\`: ` +
-        "Run CR report on Thibault's last 20 blitz games. Supported speeds are `bullet`, `blitz`, `rapid`, and `classical`.\n" +
-        `- \`${ping} thibault recent 20 blitz +casual\`: Same but include casual games.\n` +
-        `- \`${ping} thibault recent 20 blitz time<1638009640\`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n` +
-        `- \`${ping} thibault recent 20 blitz time<2021-11-03\`: Same but use 20 last games before the 3rd November 2021.\n` +
-        `- \`${ping} thibault recent 20 blitz time>2021-11-03\`: Same but use up to 20 last games after the 3rd November 2021.\n` +
-        `- \`${ping} thibault recent 20 blitz time>2d\`: Same but use up to 20 last games during the last 2 days.\n` +
-        `- \`${ping} thibault recent 20 blitz advantage<100\`: Same but only include games where Thibault has no more than 100 rating over his opponent.\n` +
+        '- `@cr help`: Show this help.\n' +
+        '- `@cr thibault abcdefgh ijklmnop`: Run CR report on Thibault with game IDs abcdefgh and ijklmnop. You can add up to 100 game IDs.\n' +
+        '- `@cr thibault https://lichess.org/abcdefgh`: Run CR report on Thibault with the linked game.\n' +
+        "- `@cr thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported speeds are `bullet`, `blitz`, `rapid`, and `classical`.\n" +
+        '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
+        '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n' +
+        '- `@cr thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
+        '- `@cr thibault recent 20 blitz time>2021-11-03`: Same but use up to 20 last games after the 3rd November 2021.\n' +
+        '- `@cr thibault recent 20 blitz time>2d`: Same but use up to 20 last games during the last 2 days.\n' +
+        '- `@cr thibault recent 20 blitz advantage<100`: Same but only include games where Thibault has no more than 100 rating over his opponent.\n' +
         '\nParameters for recent games can be passed in arbitrary order.'
     );
   };

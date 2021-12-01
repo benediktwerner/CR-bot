@@ -64,7 +64,11 @@ export class Zulip {
               // console.log('Zulip heartbeat');
               break;
             case 'message':
-              if (event.message.sender_id !== me.user_id) await msgHandler.handle(event.message);
+              if (
+                event.message.sender_id !== me.user_id &&
+                (event.message.content.startsWith(`@**${me.full_name}**`) || event.message.content.startsWith('@cr '))
+              )
+                await msgHandler.handle(event.message);
               break;
             // case 'reaction':
             //   if (event.user_id !== me.user_id) await handleReaction(event);

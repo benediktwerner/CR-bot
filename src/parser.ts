@@ -25,6 +25,7 @@ export type Command =
 export const parseCmd = (msg: Msg): Command => {
   const parts = msg.content
     .replace(/@\*\*.+?\*\*/, '')
+    .replace(/^@cr/, '')
     .trim()
     .split(/\s+/)
     .map((p) => p.trim());
