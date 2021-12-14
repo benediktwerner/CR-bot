@@ -31,6 +31,9 @@ export class Zulip {
     const me = await assertSuccess(this.client.users.me.getProfile());
     return me.full_name;
   };
+  sendA = wrapAssert(this.send);
+  replyA = wrapAssert(this.reply);
+  reactA = wrapAssert(this.react);
 
   eventLoop = async (narrow: Narrow[], msgHandler: MsgHandler) => {
     const q = await assertSuccess(
@@ -42,7 +45,7 @@ export class Zulip {
 
     const me = await assertSuccess(this.client.users.me.getProfile());
     console.log(`Connected to zulip as @${me.full_name}`);
-    // await this.send({ type: 'stream', to: 'zulip', topic: 'bots log' }, 'I started.');
+    // await this.sendA({ type: 'stream', to: 'zulip', topic: 'bots log' }, 'I started.');
 
     let lastEventId = q.last_event_id;
 
@@ -73,9 +76,6 @@ export class Zulip {
               )
                 await msgHandler.handle(event.message);
               break;
-            // case 'reaction':
-            //   if (event.user_id !== me.user_id) await handleReaction(event);
-            //   break;
             default:
               console.log(event);
               break;
@@ -101,6 +101,13 @@ const msgToDest = (orig: Msg): Dest => {
         to: [orig.sender_id],
       };
 };
+
+const wrapAssert =
+  <T, A extends any[]>(
+    f: (...args: A) => ApiResponse<T>
+  ): ((...args: A) => Promise<T>) =>
+  async (...args) =>
+    await assertSuccess(f(...args));
 
 export const assertSuccess = async <T>(
   response: ApiResponse<T>

@@ -16,14 +16,14 @@ export class MsgHandler {
   }
 
   handleInvalid = async (msg: Msg, reason: string): Promise<void> => {
-    await this.z.reply(
+    await this.z.replyA(
       msg,
       `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`
     );
   };
 
   handleHelp = async (msg: Msg): Promise<void> => {
-    await this.z.reply(
+    await this.z.replyA(
       msg,
       'Usage:\n' +
         '- `@cr help`: Show this help.\n' +
@@ -57,13 +57,13 @@ export class MsgHandler {
       res = await fetch(url, { ...options, signal: abortCtrl.signal });
       if (!res.ok) {
         if (res.status === 429 && !retried) {
-          await this.z.reply(
+          await this.z.replyA(
             msg,
             ':time_ticking: Rate-limited. Waiting for 10 minutes.'
           );
           await sleep(10 * 60);
         } else {
-          await this.z.reply(
+          await this.z.replyA(
             msg,
             `:cross_mark: Error while fetching games: ${res.statusText}`
           );
@@ -101,16 +101,16 @@ export class MsgHandler {
       new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's')
     );
     if (match) {
-      await this.z.reply(
+      await this.z.replyA(
         msg,
         `@**${msg.sender_full_name}** CR report on /${cmd.user} completed:\n\n\`\`\`\n${match[1]}\n\`\`\``
       );
-      await this.z.react(msg, 'check');
+      await this.z.reactA(msg, 'check');
     } else {
       console.log(
         `Failed to find report about ${cmd.user} in CR output:\n${report}`
       );
-      await this.z.reply(msg, ':cross_mark: No CR output');
+      await this.z.replyA(msg, ':cross_mark: No CR output');
     }
   };
 
@@ -170,7 +170,7 @@ export class MsgHandler {
   };
 
   public handle = async (msg: Msg): Promise<void> => {
-    await this.z.react(msg, 'time_ticking');
+    await this.z.reactA(msg, 'time_ticking');
 
     try {
       const cmd = parseCmd(msg);
