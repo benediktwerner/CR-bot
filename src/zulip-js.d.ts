@@ -96,7 +96,9 @@ declare module 'zulip-js' {
     result: 'success';
   }
 
-  export type ApiResponse<T = {}> = Promise<(SuccessResponse & T) | ErrorResponse>;
+  export type ApiResponse<T = {}> = Promise<
+    (SuccessResponse & T) | ErrorResponse
+  >;
 
   export interface ZulipClient {
     config: Config;
@@ -145,5 +147,7 @@ declare module 'zulip-js' {
     params: Params
   ): Promise<unknown>;
 
-  export default function zulip(initialConfig: Partial<InitialConfig>): Promise<ZulipClient>;
+  export default function zulip(
+    initialConfig: Partial<InitialConfig>
+  ): Promise<ZulipClient>;
 }

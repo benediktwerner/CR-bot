@@ -16,7 +16,10 @@ export class MsgHandler {
   }
 
   handleInvalid = async (msg: Msg, reason: string): Promise<void> => {
-    await this.z.reply(msg, `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`);
+    await this.z.reply(
+      msg,
+      `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`
+    );
   };
 
   handleHelp = async (msg: Msg): Promise<void> => {
@@ -30,7 +33,7 @@ export class MsgHandler {
         '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
         '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp (in seconds).\n' +
         '- `@cr thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
-        "- `@cr thibault recent 20 blitz time>2021-11-03`: Only consider max 20 last games up to the 3rd November 2021.\n" +
+        '- `@cr thibault recent 20 blitz time>2021-11-03`: Only consider max 20 last games up to the 3rd November 2021.\n' +
         '- `@cr thibault recent 20 blitz time>2d`: Only consider up to 20 last games during the last 2 days.\n' +
         '- `@cr thibault recent 20 blitz advantage<100`: Only include games where Thibault has no more than 100 rating over his opponent.\n' +
         '\nParameters for recent games can be combined and passed in arbitrary order.'
@@ -42,7 +45,11 @@ export class MsgHandler {
     cmd: IdsCommand | RecentCommand,
     url: string,
     options: RequestInit,
-    handleResponse: (res: Response, abortCtrl: AbortController, pgnPath: string) => Promise<void>
+    handleResponse: (
+      res: Response,
+      abortCtrl: AbortController,
+      pgnPath: string
+    ) => Promise<void>
   ) => {
     let res: Response;
     const abortCtrl = new AbortController();
@@ -50,16 +57,26 @@ export class MsgHandler {
       res = await fetch(url, { ...options, signal: abortCtrl.signal });
       if (!res.ok) {
         if (res.status === 429 && !retried) {
-          await this.z.reply(msg, ':time_ticking: Rate-limited. Waiting for 10 minutes.');
+          await this.z.reply(
+            msg,
+            ':time_ticking: Rate-limited. Waiting for 10 minutes.'
+          );
           await sleep(10 * 60);
         } else {
-          await this.z.reply(msg, `:cross_mark: Error while fetching games: ${res.statusText}`);
+          await this.z.reply(
+            msg,
+            `:cross_mark: Error while fetching games: ${res.statusText}`
+          );
           return;
         }
       }
     }
 
-    const date = new Date().toISOString().replace('T', '--').replace(/:|\./g, '-').replace('Z', '');
+    const date = new Date()
+      .toISOString()
+      .replace('T', '--')
+      .replace(/:|\./g, '-')
+      .replace('Z', '');
     const reportName = `${date}--${cmd.user}`;
     const pgnPath = `pgn/${reportName}.pgn`;
 
@@ -71,11 +88,18 @@ export class MsgHandler {
 
     const reportPath = `reports/${reportName}.txt`;
     await exec(
-      `${config.python_bin} ${path.join(__dirname, '..', 'ChessReanalysis', 'main.py')} ${pgnPath} ${reportPath}`
+      `${config.python_bin} ${path.join(
+        __dirname,
+        '..',
+        'ChessReanalysis',
+        'main.py'
+      )} ${pgnPath} ${reportPath}`
     );
 
     const report = await readFile(reportPath, { encoding: 'ascii' });
-    const match = report.match(new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's'));
+    const match = report.match(
+      new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's')
+    );
     if (match) {
       await this.z.reply(
         msg,
@@ -83,7 +107,9 @@ export class MsgHandler {
       );
       await this.z.react(msg, 'check');
     } else {
-      console.log(`Failed to find report about ${cmd.user} in CR output:\n${report}`);
+      console.log(
+        `Failed to find report about ${cmd.user} in CR output:\n${report}`
+      );
       await this.z.reply(msg, ':cross_mark: No CR output');
     }
   };
@@ -122,14 +148,25 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          const playerColor = o.players.white.user.id === cmd.user.toLowerCase() ? 'white' : 'black';
+          const playerColor =
+            o.players.white.user.id === cmd.user.toLowerCase()
+              ? 'white'
+              : 'black';
           const player = o.players[playerColor];
-          const opponent = o.players[playerColor === 'white' ? 'black' : 'white'];
+          const opponent =
+            o.players[playerColor === 'white' ? 'black' : 'white'];
           if (opponent.provisional && cmd.max_advantage < 2000) return;
           if (player.rating - opponent.rating < cmd.max_advantage) return o.pgn;
         }, cmd.count)
       );
-    } else await this.doCR(msg, cmd, `https://lichess.org/api/games/user/${cmd.user}?${params}`, {}, pipeToFile);
+    } else
+      await this.doCR(
+        msg,
+        cmd,
+        `https://lichess.org/api/games/user/${cmd.user}?${params}`,
+        {},
+        pipeToFile
+      );
   };
 
   public handle = async (msg: Msg): Promise<void> => {

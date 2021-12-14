@@ -22,7 +22,8 @@ export const parseTime = (s: string): number | undefined => {
     return +new Date() - parseInt(match[1], 10) * 24 * 60 * 60 * 1000;
 };
 
-export const formatTimestamp = (t: number): string => new Date(t).toISOString().split('T')[0];
+export const formatTimestamp = (t: number): string =>
+  new Date(t).toISOString().split('T')[0];
 
 const streamPipeline = promisify(pipeline);
 
@@ -36,7 +37,11 @@ export const pipeToFile = async (
 
 export const pipeNjdsonToFile =
   (filterMap: (o: any) => undefined | string, max?: number) =>
-  async (res: Response, abortCtrl: AbortController, fname: string): Promise<void> => {
+  async (
+    res: Response,
+    abortCtrl: AbortController,
+    fname: string
+  ): Promise<void> => {
     const fileStream = fs.createWriteStream(fname);
     try {
       const matcher = /\r?\n/;

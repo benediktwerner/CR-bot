@@ -14,7 +14,8 @@ export class Zulip {
       ...dest,
       content: text,
     });
-  sendToUser = async (id: number, text: string) => await this.send({ type: 'private', to: [id] }, text);
+  sendToUser = async (id: number, text: string) =>
+    await this.send({ type: 'private', to: [id] }, text);
   reply = async (to: Msg, text: string) => await this.send(msgToDest(to), text);
   react = async (to: Msg | number, emoji: string) =>
     await this.client.reactions.add({
@@ -52,7 +53,9 @@ export class Zulip {
           last_event_id: lastEventId,
         });
         if (res.result !== 'success') {
-          console.error(`Got error response on events.retrieve: ${JSON.stringify(res)}`);
+          console.error(
+            `Got error response on events.retrieve: ${JSON.stringify(res)}`
+          );
           await sleep(2000);
           continue;
         }
@@ -65,7 +68,8 @@ export class Zulip {
             case 'message':
               if (
                 event.message.sender_id !== me.user_id &&
-                (event.message.content.startsWith(`@**${me.full_name}**`) || event.message.content.startsWith('@cr '))
+                (event.message.content.startsWith(`@**${me.full_name}**`) ||
+                  event.message.content.startsWith('@cr '))
               )
                 await msgHandler.handle(event.message);
               break;
@@ -98,8 +102,11 @@ const msgToDest = (orig: Msg): Dest => {
       };
 };
 
-export const assertSuccess = async <T>(response: ApiResponse<T>): Promise<T> => {
+export const assertSuccess = async <T>(
+  response: ApiResponse<T>
+): Promise<T> => {
   const resp = await response;
-  if (resp.result !== 'success') throw new Error(`Got error response: ${JSON.stringify(resp)}`);
+  if (resp.result !== 'success')
+    throw new Error(`Got error response: ${JSON.stringify(resp)}`);
   return resp;
 };
