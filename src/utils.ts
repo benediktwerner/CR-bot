@@ -15,8 +15,9 @@ export const exec = promisify(nodeExec);
 
 export const parseTime = (s: string): number | undefined => {
   let match;
-  if ((match = s.match(/^(\d+)$/))) return parseInt(match[1], 10);
-  else if ((match = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return Date.parse(match[1]);
+  if ((match = s.match(/^(\d+)$/))) return parseInt(match[1], 10) * 1000;
+  else if ((match = s.match(/^\d{4}-\d{1,2}-\d{1,2}$/)))
+    return Date.parse(match[0]);
   else if ((match = s.match(/^(\d+)d(ays?)?$/)))
     return +new Date() - parseInt(match[1], 10) * 24 * 60 * 60 * 1000;
 };

@@ -28,7 +28,7 @@ export class MsgHandler {
         '- `@cr thibault https://lichess.org/abcdefgh`: Run CR report on Thibault with the linked game.\n' +
         "- `@cr thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported speeds are `bullet`, `blitz`, `rapid`, and `classical`.\n" +
         '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
-        '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp.\n' +
+        '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp (in seconds).\n' +
         '- `@cr thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
         "- `@cr thibault recent 20 blitz time>2021-11-03`: Only consider max 20 last games up to the 3rd November 2021.\n" +
         '- `@cr thibault recent 20 blitz time>2d`: Only consider up to 20 last games during the last 2 days.\n' +
@@ -106,8 +106,8 @@ export class MsgHandler {
     params.append('perfType', cmd.variant);
     if (cmd.max_advantage) params.append('max', (cmd.count * 5).toString());
     else params.append('max', cmd.count.toString());
-    if (cmd.before_epoch) params.append('until', `${cmd.before_epoch}000`);
-    if (cmd.after_epoch) params.append('since', `${cmd.after_epoch}000`);
+    if (cmd.before_epoch) params.append('until', cmd.before_epoch.toString());
+    if (cmd.after_epoch) params.append('since', cmd.after_epoch.toString());
     if (!cmd.with_casual) params.append('rated', 'true');
 
     if (cmd.max_advantage) {
