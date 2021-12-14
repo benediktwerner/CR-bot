@@ -73,7 +73,7 @@ export const parseCmd = (msg: Msg): Command => {
         .replace(/(?:https?:\/\/)?lichess\.org\//, '')
         .replace('/black', '')
         .trim()
-        .substr(0, 8)
+        .substring(0, 8)
     );
 
     for (const id of gameIds) {
