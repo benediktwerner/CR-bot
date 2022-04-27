@@ -9,6 +9,25 @@ import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 import { __dirname } from './utils.js';
 
+const advantageOk = (o: any, cmd: RecentCommand): boolean => {
+  if (!cmd.max_advantage) return true;
+
+  const playerColor =
+    o.players.white.user.id === cmd.user.toLowerCase() ? 'white' : 'black';
+  const player = o.players[playerColor];
+  const opponent = o.players[playerColor === 'white' ? 'black' : 'white'];
+  if (opponent.provisional && cmd.max_advantage < 2000) return false;
+  if (player.rating - opponent.rating < cmd.max_advantage) return true;
+  return false;
+};
+
+const movesOk = (o: any, cmd: RecentCommand): boolean => {
+  const moves = o.moves.split(' ').length;
+  const min_moves = cmd.min_moves ?? 0;
+  const max_moves = cmd.max_moves ?? 10000;
+  return min_moves < moves && moves < max_moves;
+};
+
 export class MsgHandler {
   constructor(private z: Zulip) {
     fs.mkdirSync('pgn', { recursive: true });
@@ -36,6 +55,7 @@ export class MsgHandler {
         '- `@cr thibault recent 20 blitz time>2021-11-03`: Only consider max 20 last games up to the 3rd November 2021.\n' +
         '- `@cr thibault recent 20 blitz time>2d`: Only consider up to 20 last games during the last 2 days.\n' +
         '- `@cr thibault recent 20 blitz advantage<100`: Only include games where Thibault has no more than 100 rating over his opponent.\n' +
+        '- `@cr thibault recent 20 blitz moves>20`: Only include games with >20 moves.\n' +
         '\nParameters for recent games can be combined and passed in arbitrary order.'
     );
   };
@@ -136,7 +156,7 @@ export class MsgHandler {
     if (cmd.after_epoch) params.append('since', cmd.after_epoch.toString());
     if (!cmd.with_casual) params.append('rated', 'true');
 
-    if (cmd.max_advantage) {
+    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves) {
       params.append('pgnInJson', 'true');
       await this.doCR(
         msg,
@@ -148,15 +168,7 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          const playerColor =
-            o.players.white.user.id === cmd.user.toLowerCase()
-              ? 'white'
-              : 'black';
-          const player = o.players[playerColor];
-          const opponent =
-            o.players[playerColor === 'white' ? 'black' : 'white'];
-          if (opponent.provisional && cmd.max_advantage < 2000) return;
-          if (player.rating - opponent.rating < cmd.max_advantage) return o.pgn;
+          if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
         }, cmd.count)
       );
     } else

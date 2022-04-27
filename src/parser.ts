@@ -15,6 +15,8 @@ export interface RecentCommand {
   before_epoch?: number;
   after_epoch?: number;
   max_advantage?: number;
+  min_moves?: number;
+  max_moves?: number;
 }
 export type Command =
   | { type: 'help' }
@@ -51,7 +53,11 @@ export const parseCmd = (msg: Msg): Command => {
       else if (arg === '+casual') cmd.with_casual = true;
       else if (/^\d+$/.test(arg)) cmd.count = parseInt(arg, 10);
       else if ((match = arg.match(/^advantage<(\d+)$/))) cmd.max_advantage = parseInt(match[1], 10);
-      else if ((match = arg.match(/^time(<|>)(.+)$/))) {
+      else if ((match = arg.match(/^moves(<|>)(\d+)$/))) {
+        const [_, op, num] = match;
+        if (op === '<') cmd.max_moves = parseInt(num, 10);
+        else cmd.min_moves = parseInt(num, 10);
+      } else if ((match = arg.match(/^time(<|>)(.+)$/))) {
         const [_, op, timeStr] = match;
         const time = parseTime(timeStr);
         if (!time || isNaN(time)) return invalid(`Invalid date/time format: ${timeStr}`);
