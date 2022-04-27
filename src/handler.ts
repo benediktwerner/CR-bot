@@ -4,12 +4,20 @@ import { readFile } from 'fs/promises';
 import fetch, { AbortError, RequestInit, Response } from 'node-fetch';
 import { Msg } from 'zulip-js';
 import { config } from './config.js';
-import { IdsCommand, parseCmd, RecentCommand } from './parser.js';
+import {
+  IdsCommand,
+  parseCmd,
+  RecentCommand,
+  TournamentCommand,
+} from './parser.js';
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 import { __dirname } from './utils.js';
 
-const advantageOk = (o: any, cmd: RecentCommand): boolean => {
+const advantageOk = (
+  o: any,
+  cmd: { user: string; max_advantage?: number }
+): boolean => {
   if (!cmd.max_advantage) return true;
 
   const playerColor =
@@ -21,7 +29,10 @@ const advantageOk = (o: any, cmd: RecentCommand): boolean => {
   return false;
 };
 
-const movesOk = (o: any, cmd: RecentCommand): boolean => {
+const movesOk = (
+  o: any,
+  cmd: { min_moves?: number; max_moves?: number }
+): boolean => {
   const moves = o.moves.split(' ').length;
   const min_moves = cmd.min_moves ?? 0;
   const max_moves = cmd.max_moves ?? 10000;
@@ -56,13 +67,14 @@ export class MsgHandler {
         '- `@cr thibault recent 20 blitz time>2d`: Only consider up to 20 last games during the last 2 days.\n' +
         '- `@cr thibault recent 20 blitz advantage<100`: Only include games where Thibault has no more than 100 rating over his opponent.\n' +
         '- `@cr thibault recent 20 blitz moves>20`: Only include games with >20 moves.\n' +
-        '\nParameters for recent games can be combined and passed in arbitrary order.'
+        "- `@cr thibault tournament https://lichess.org/tournament/NJLaTNjQ`: Run CR report on all of Thibault's games from the linked tournament. Also supports `advantage` and `moves` parameters.\n" +
+        '\nParameters can be combined and passed in arbitrary order.'
     );
   };
 
   doCR = async (
     msg: Msg,
-    cmd: IdsCommand | RecentCommand,
+    cmd: IdsCommand | RecentCommand | TournamentCommand,
     url: string,
     options: RequestInit,
     handleResponse: (
@@ -149,6 +161,7 @@ export class MsgHandler {
 
   handelRecent = async (msg: Msg, cmd: RecentCommand): Promise<void> => {
     const params = new URLSearchParams();
+    const base_url = `https://lichess.org/api/games/user/${cmd.user}?`;
     params.append('perfType', cmd.variant);
     if (cmd.max_advantage) params.append('max', (cmd.count * 5).toString());
     else params.append('max', cmd.count.toString());
@@ -161,7 +174,7 @@ export class MsgHandler {
       await this.doCR(
         msg,
         cmd,
-        `https://lichess.org/api/games/user/${cmd.user}?${params}`,
+        base_url + params,
         {
           headers: {
             Accept: 'application/x-ndjson',
@@ -171,14 +184,33 @@ export class MsgHandler {
           if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
         }, cmd.count)
       );
-    } else
+    } else await this.doCR(msg, cmd, base_url + params, {}, pipeToFile);
+  };
+
+  handleTournament = async (
+    msg: Msg,
+    cmd: TournamentCommand
+  ): Promise<void> => {
+    const params = new URLSearchParams();
+    const base_url = `https://lichess.org/api/${cmd.tournament_type}/${cmd.id}/games?`;
+    params.append('player', cmd.user);
+
+    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves) {
+      params.append('pgnInJson', 'true');
       await this.doCR(
         msg,
         cmd,
-        `https://lichess.org/api/games/user/${cmd.user}?${params}`,
-        {},
-        pipeToFile
+        base_url + params,
+        {
+          headers: {
+            Accept: 'application/x-ndjson',
+          },
+        },
+        pipeNjdsonToFile((o) => {
+          if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
+        })
       );
+    } else await this.doCR(msg, cmd, base_url + params, {}, pipeToFile);
   };
 
   public handle = async (msg: Msg): Promise<void> => {
@@ -190,6 +222,7 @@ export class MsgHandler {
       else if (cmd.type === 'help') await this.handleHelp(msg);
       else if (cmd.type === 'ids') await this.handleIds(msg, cmd);
       else if (cmd.type === 'recent') await this.handelRecent(msg, cmd);
+      else if (cmd.type === 'tournament') await this.handleTournament(msg, cmd);
       else await this.handleInvalid(msg, `Unexpected parsed command: ${cmd}`);
     } catch (err) {
       console.error(err);
