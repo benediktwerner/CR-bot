@@ -97,7 +97,7 @@ export class MsgHandler {
         } else {
           await this.z.replyA(
             msg,
-            `:cross_mark: Error while fetching games: ${res.statusText}`
+            `:cross_mark: Error while fetching games: ${res.statusText}\nURL: ${url}`
           );
           return;
         }
