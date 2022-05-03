@@ -93,8 +93,9 @@ export const parseCmd = (msg: Msg): Command => {
   } else if (args.some((a) => a.toLowerCase() === 'tournament')) {
     let cmd = { type: 'tournament', user } as Partial<TournamentCommand>;
     let match;
-    for (const arg of args.map((a) => a.toLowerCase())) {
-      if (arg === 'tournament') {
+    for (const arg of args) {
+      const argLower = arg.toLowerCase();
+      if (argLower === 'tournament') {
       } else if (
         (match = arg.match(
           /^https:\/\/lichess.org\/(tournament|swiss)\/([a-zA-Z0-9]{8})$/
@@ -103,9 +104,9 @@ export const parseCmd = (msg: Msg): Command => {
         const [_, typ, id] = match;
         cmd.id = id;
         cmd.tournament_type = typ as any;
-      } else if ((match = arg.match(/^advantage<(\d+)$/)))
+      } else if ((match = argLower.match(/^advantage<(\d+)$/)))
         cmd.max_advantage = parseInt(match[1], 10);
-      else if ((match = arg.match(/^moves(<|>)(\d+)$/))) {
+      else if ((match = argLower.match(/^moves(<|>)(\d+)$/))) {
         const [_, op, num] = match;
         if (op === '<') cmd.max_moves = parseInt(num, 10);
         else cmd.min_moves = parseInt(num, 10);
