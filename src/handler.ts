@@ -39,6 +39,11 @@ const movesOk = (
   return min_moves < moves && moves < max_moves;
 };
 
+const playerOk = (o: any, cmd: { user: string }): boolean => {
+  const user = cmd.user.toLowerCase();
+  return o.players.white.user.id === user || o.players.black.user.id === user;
+};
+
 export class MsgHandler {
   constructor(private z: Zulip) {
     fs.mkdirSync('pgn', { recursive: true });
@@ -195,7 +200,12 @@ export class MsgHandler {
     const base_url = `https://lichess.org/api/${cmd.tournament_type}/${cmd.id}/games?`;
     params.append('player', cmd.user);
 
-    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves) {
+    if (
+      cmd.max_advantage ||
+      cmd.min_moves ||
+      cmd.max_moves ||
+      cmd.tournament_type === 'swiss'
+    ) {
       params.append('pgnInJson', 'true');
       await this.doCR(
         msg,
@@ -207,7 +217,8 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
+          if (advantageOk(o, cmd) && movesOk(o, cmd) && playerOk(o, cmd))
+            return o.pgn;
         })
       );
     } else await this.doCR(msg, cmd, base_url + params, {}, pipeToFile);
