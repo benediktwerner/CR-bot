@@ -127,7 +127,7 @@ export class MsgHandler {
         this.crIsRunning = false;
         await this.z.replyA(msg, "Running CR didn't abort after 5 seconds");
       } else {
-        await this.z.replyA(msg, 'Aborted');
+        await this.z.reactA(msg, 'check');
       }
     }
   };
@@ -173,6 +173,8 @@ export class MsgHandler {
           msg,
           `:prohibited: CR request aborted: ${formatCmd(cmd)}`
         );
+        await this.z.react(msg, 'prohibited');
+        return;
       } else if (typeof e === 'object' && e !== null && e.killed) {
         await this.z.replyA(
           msg,
