@@ -27,12 +27,13 @@ export interface TournamentCommand {
   min_moves?: number;
   max_moves?: number;
 }
+export type ValidCommand = IdsCommand | RecentCommand | TournamentCommand;
 export type Command =
   | { type: 'help' }
   | { type: 'invalid'; reason: string }
-  | IdsCommand
-  | RecentCommand
-  | TournamentCommand;
+  | { type: 'status' }
+  | { type: 'abort'; indexOrAll: number | 'all' }
+  | ValidCommand;
 
 export const parseCmd = (msg: Msg): Command => {
   const parts = msg.content
@@ -43,6 +44,15 @@ export const parseCmd = (msg: Msg): Command => {
     .map((p) => p.trim());
 
   if (parts.length === 0 || parts[0] === 'help') return { type: 'help' };
+  if (parts[0] === 'status') return { type: 'status' };
+  if (parts[0] === 'abort') {
+    if (parts[1] === 'all') return { type: 'abort', indexOrAll: 'all' };
+    try {
+      return { type: 'abort', indexOrAll: parseInt(parts[1], 10) };
+    } catch {
+      return { type: 'invalid', reason: 'Invalid index' };
+    }
+  }
 
   const [user, ...args] = parts;
 
@@ -136,3 +146,5 @@ export const parseCmd = (msg: Msg): Command => {
     return { type: 'ids', user, ids: gameIds };
   }
 };
+
+export const formatCmd = (cmd: ValidCommand) => {};

@@ -62,7 +62,7 @@ export class Zulip {
           await sleep(2000);
           continue;
         }
-        res.events.forEach(async (event) => {
+        for (const event of res.events) {
           lastEventId = event.id;
           switch (event.type) {
             case 'heartbeat':
@@ -80,7 +80,7 @@ export class Zulip {
               console.log(event);
               break;
           }
-        });
+        }
       } catch (e) {
         console.error(e);
         await sleep(2000);

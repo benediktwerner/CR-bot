@@ -5,14 +5,25 @@ import fetch, { AbortError, RequestInit, Response } from 'node-fetch';
 import { Msg } from 'zulip-js';
 import { config } from './config.js';
 import {
+  formatCmd,
   IdsCommand,
   parseCmd,
   RecentCommand,
   TournamentCommand,
+  ValidCommand,
 } from './parser.js';
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 import { __dirname } from './utils.js';
+
+interface QueuedCR {
+  msg: Msg;
+  cmd: ValidCommand;
+  pgnPath: string;
+  reportPath: string;
+}
+
+type RunningCR = QueuedCR & { abortCtrl: AbortController };
 
 const advantageOk = (
   o: any,
@@ -45,6 +56,10 @@ const playerOk = (o: any, cmd: { user: string }): boolean => {
 };
 
 export class MsgHandler {
+  private crQueue: QueuedCR[] = [];
+  private crIsRunning = false;
+  private currentCr: null | RunningCR = null;
+
   constructor(private z: Zulip) {
     fs.mkdirSync('pgn', { recursive: true });
     fs.mkdirSync('reports', { recursive: true });
@@ -77,9 +92,118 @@ export class MsgHandler {
     );
   };
 
-  doCR = async (
+  handleStatus = async (msg: Msg): Promise<void> => {
+    let status = 'CR running: ' + this.crIsRunning;
+    if (this.currentCr !== null)
+      status += '\nCurrently running: [0] ' + formatCmd(this.currentCr.cmd);
+    if (this.crQueue.length > 0) {
+      status += '\n\nQueued:';
+      for (const i in this.crQueue)
+        status += `\n[${i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
+    }
+    await this.z.replyA(msg, status);
+  };
+
+  handleAbort = async (
     msg: Msg,
-    cmd: IdsCommand | RecentCommand | TournamentCommand,
+    { indexOrAll }: { indexOrAll: number | 'all' }
+  ): Promise<void> => {
+    if (indexOrAll === 'all') {
+      this.crQueue = [];
+    } else if (indexOrAll > 0) {
+      this.crQueue.splice(indexOrAll - 1);
+    }
+    if (indexOrAll === 0 || indexOrAll === 'all') {
+      this.currentCr.abortCtrl.abort();
+      await sleep(5);
+      if (this.crIsRunning) {
+        this.crIsRunning = false;
+        await this.z.replyA(msg, "Running CR didn't abort after 5 seconds");
+      } else {
+        await this.z.replyA(msg, 'Aborted');
+      }
+    }
+  };
+
+  runCrLoop = async () => {
+    if (this.crIsRunning) return;
+    this.crIsRunning = true;
+
+    while (this.crQueue.length > 0) {
+      const abortCtrl = new AbortController();
+      const cr = { ...this.crQueue.shift(), abortCtrl };
+      this.currentCr = cr;
+      try {
+        try {
+          await this.doCR(cr);
+        } finally {
+          await this.z.unreact(cr.msg, 'time_ticking');
+        }
+      } catch (e) {
+        console.error('Exception during doCR:');
+        console.error(e);
+      }
+    }
+
+    this.currentCr = null;
+    this.crIsRunning = false;
+  };
+
+  doCR = async ({ msg, cmd, pgnPath, reportPath, abortCtrl }: RunningCR) => {
+    try {
+      await exec(
+        `${config.python_bin} "${path.join(
+          __dirname,
+          '..',
+          'ChessReanalysis',
+          'main.py'
+        )}" "${pgnPath}" "${reportPath}"`,
+        { timeout: 60 * 60 * 1000, signal: abortCtrl.signal } as any
+      );
+    } catch (e) {
+      if (e instanceof AbortError) {
+        await this.z.replyA(
+          msg,
+          `:cross_mark: CR request aborted: ${formatCmd(cmd)}`
+        );
+      } else if (typeof e === 'object' && e !== null && e.killed) {
+        await this.z.replyA(
+          msg,
+          `:cross_mark: Killed CR request because it didn't finish after 1 hour: ${formatCmd(
+            cmd
+          )}`
+        );
+      } else {
+        console.error('Exception during CR exec:');
+        console.error(e);
+        await this.z.replyA(msg, ':cross_mark: CR failed');
+      }
+      await this.z.react(msg, 'cross_mark');
+      return;
+    }
+
+    const report = await readFile(reportPath, { encoding: 'ascii' });
+    const match = report.match(
+      new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's')
+    );
+    if (match) {
+      await this.z.replyA(
+        msg,
+        `@**${msg.sender_full_name}** CR report on /${cmd.user} completed:\n\n\`\`\`\n${match[1]}\n\`\`\``
+      );
+      await this.z.reactA(msg, 'check');
+    } else {
+      console.log(
+        `Failed to find report about ${cmd.user} in CR output:\n${report}`
+      );
+      await this.z.replyA(msg, ':cross_mark: No CR output');
+      await this.z.react(msg, 'cross_mark');
+    }
+  };
+
+  fetchAndDoCR = async (
+    msg: Msg,
+    cmd: ValidCommand,
     url: string,
     options: RequestInit,
     handleResponse: (
@@ -114,8 +238,9 @@ export class MsgHandler {
       .replace('T', '--')
       .replace(/:|\./g, '-')
       .replace('Z', '');
-    const reportName = `${date}--${cmd.user}`;
+    const reportName = `${date}--${cmd.user.replace(/[^a-zA-Z0-9_-]/g, '')}`;
     const pgnPath = `pgn/${reportName}.pgn`;
+    const reportPath = `reports/${reportName}.txt`;
 
     try {
       await handleResponse(res, abortCtrl, pgnPath);
@@ -123,36 +248,18 @@ export class MsgHandler {
       if (!(error instanceof AbortError)) throw error;
     }
 
-    const reportPath = `reports/${reportName}.txt`;
-    await exec(
-      `${config.python_bin} ${path.join(
-        __dirname,
-        '..',
-        'ChessReanalysis',
-        'main.py'
-      )} ${pgnPath} ${reportPath}`
-    );
+    this.crQueue.push({
+      msg,
+      cmd,
+      pgnPath,
+      reportPath,
+    });
 
-    const report = await readFile(reportPath, { encoding: 'ascii' });
-    const match = report.match(
-      new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's')
-    );
-    if (match) {
-      await this.z.replyA(
-        msg,
-        `@**${msg.sender_full_name}** CR report on /${cmd.user} completed:\n\n\`\`\`\n${match[1]}\n\`\`\``
-      );
-      await this.z.reactA(msg, 'check');
-    } else {
-      console.log(
-        `Failed to find report about ${cmd.user} in CR output:\n${report}`
-      );
-      await this.z.replyA(msg, ':cross_mark: No CR output');
-    }
+    this.runCrLoop();
   };
 
   handleIds = async (msg: Msg, cmd: IdsCommand): Promise<void> => {
-    await this.doCR(
+    await this.fetchAndDoCR(
       msg,
       cmd,
       'https://lichess.org/games/export/_ids',
@@ -176,7 +283,7 @@ export class MsgHandler {
 
     if (cmd.max_advantage || cmd.min_moves || cmd.max_moves) {
       params.append('pgnInJson', 'true');
-      await this.doCR(
+      await this.fetchAndDoCR(
         msg,
         cmd,
         base_url + params,
@@ -189,7 +296,7 @@ export class MsgHandler {
           if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
         }, cmd.count)
       );
-    } else await this.doCR(msg, cmd, base_url + params, {}, pipeToFile);
+    } else await this.fetchAndDoCR(msg, cmd, base_url + params, {}, pipeToFile);
   };
 
   handleTournament = async (
@@ -207,7 +314,7 @@ export class MsgHandler {
       cmd.tournament_type === 'swiss'
     ) {
       params.append('pgnInJson', 'true');
-      await this.doCR(
+      await this.fetchAndDoCR(
         msg,
         cmd,
         base_url + params,
@@ -221,16 +328,23 @@ export class MsgHandler {
             return o.pgn;
         })
       );
-    } else await this.doCR(msg, cmd, base_url + params, {}, pipeToFile);
+    } else await this.fetchAndDoCR(msg, cmd, base_url + params, {}, pipeToFile);
   };
 
   public handle = async (msg: Msg): Promise<void> => {
     await this.z.reactA(msg, 'time_ticking');
+    let runningCr = false;
 
     try {
       const cmd = parseCmd(msg);
+      runningCr =
+        cmd.type === 'ids' ||
+        cmd.type === 'recent' ||
+        cmd.type === 'tournament';
       if (cmd.type === 'invalid') await this.handleInvalid(msg, cmd.reason);
       else if (cmd.type === 'help') await this.handleHelp(msg);
+      else if (cmd.type === 'status') await this.handleStatus(msg);
+      else if (cmd.type === 'abort') await this.handleAbort(msg, cmd);
       else if (cmd.type === 'ids') await this.handleIds(msg, cmd);
       else if (cmd.type === 'recent') await this.handelRecent(msg, cmd);
       else if (cmd.type === 'tournament') await this.handleTournament(msg, cmd);
@@ -238,8 +352,9 @@ export class MsgHandler {
     } catch (err) {
       console.error(err);
       await this.z.react(msg, 'cross_mark');
-    } finally {
       await this.z.unreact(msg, 'time_ticking');
+    } finally {
+      if (!runningCr) await this.z.unreact(msg, 'time_ticking');
     }
   };
 }
