@@ -115,7 +115,7 @@ export class MsgHandler {
     }
     if (indexOrAll === 0 || indexOrAll === 'all') {
       this.currentCr.abortCtrl.abort();
-      await sleep(5);
+      await sleep(5000);
       if (this.crIsRunning) {
         this.crIsRunning = false;
         await this.z.replyA(msg, "Running CR didn't abort after 5 seconds");
