@@ -161,7 +161,7 @@ export class MsgHandler {
         { timeout: 60 * 60 * 1000, signal: abortCtrl.signal } as any
       );
     } catch (e) {
-      if (e instanceof AbortError) {
+      if (e instanceof Error && e.name === 'AbortError') {
         await this.z.replyA(
           msg,
           `:cross_mark: CR request aborted: ${formatCmd(cmd)}`
