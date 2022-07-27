@@ -147,4 +147,26 @@ export const parseCmd = (msg: Msg): Command => {
   }
 };
 
-export const formatCmd = (cmd: ValidCommand) => {};
+export const formatCmd = (cmd: ValidCommand): string => {
+  if (cmd.type === 'ids') {
+    return `/${cmd.user} ids ${cmd.ids.join(' ')}`;
+  }
+  if (cmd.type === 'recent') {
+    let s = `/${cmd.user} recent ${cmd.count} ${cmd.variant}`;
+    if (cmd.with_casual) s += '+casual';
+    if (cmd.after_epoch) s += ` time>${cmd.after_epoch}`;
+    if (cmd.before_epoch) s += ` time<${cmd.before_epoch}`;
+    if (cmd.max_advantage) s += ` advantage<${cmd.max_advantage}`;
+    if (cmd.max_moves) s += ` moves<${cmd.max_moves}`;
+    if (cmd.min_moves) s += ` moves>${cmd.min_moves}`;
+    return s;
+  }
+  if (cmd.type === 'tournament') {
+    let s = `/${cmd.user} tournament ${cmd.tournament_type} ${cmd.id}`;
+    if (cmd.max_advantage) s += ` advantage<${cmd.max_advantage}`;
+    if (cmd.max_moves) s += ` moves<${cmd.max_moves}`;
+    if (cmd.min_moves) s += ` moves>${cmd.min_moves}`;
+    return s;
+  }
+  return 'Unexpected command';
+};
