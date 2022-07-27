@@ -99,7 +99,7 @@ export class MsgHandler {
     if (this.crQueue.length > 0) {
       status += '\n\nQueued:';
       for (const i in this.crQueue)
-        status += `\n[${i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
+        status += `\n[${+i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
     }
     await this.z.replyA(msg, status);
   };
