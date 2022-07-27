@@ -88,6 +88,10 @@ export class MsgHandler {
         '- `@cr thibault recent 20 blitz advantage<100`: Only include games where Thibault has no more than 100 rating over his opponent.\n' +
         '- `@cr thibault recent 20 blitz moves>20`: Only include games with >20 moves.\n' +
         "- `@cr thibault tournament https://lichess.org/tournament/NJLaTNjQ`: Run CR report on all of Thibault's games from the linked tournament. Also supports `advantage` and `moves` parameters.\n" +
+        '- `@cr status`: Show running and queued up CR requests\n' +
+        '- `@cr abort 0`: Abort currently running CR request\n' +
+        '- `@cr abort 2`: Abort 2nd queued up CR request\n' +
+        '- `@cr abort all`: Abort all CR requests\n' +
         '\nParameters can be combined and passed in arbitrary order.'
     );
   };
