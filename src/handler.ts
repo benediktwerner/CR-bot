@@ -109,8 +109,15 @@ export class MsgHandler {
     { indexOrAll }: { indexOrAll: number | 'all' }
   ): Promise<void> => {
     if (indexOrAll === 'all') {
+      for (const cr of this.crQueue) {
+        this.z.react(cr.msg, 'prohibited');
+        this.z.unreact(cr.msg, 'time_ticking');
+      }
       this.crQueue = [];
     } else if (indexOrAll > 0) {
+      const cr = this.crQueue[indexOrAll];
+      this.z.react(cr.msg, 'prohibited');
+      this.z.unreact(cr.msg, 'time_ticking');
       this.crQueue.splice(indexOrAll - 1);
     }
     if (indexOrAll === 0 || indexOrAll === 'all') {
@@ -164,7 +171,7 @@ export class MsgHandler {
       if (e instanceof Error && e.name === 'AbortError') {
         await this.z.replyA(
           msg,
-          `:cross_mark: CR request aborted: ${formatCmd(cmd)}`
+          `:prohibited: CR request aborted: ${formatCmd(cmd)}`
         );
       } else if (typeof e === 'object' && e !== null && e.killed) {
         await this.z.replyA(
