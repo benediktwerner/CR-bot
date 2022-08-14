@@ -225,6 +225,8 @@ export class MsgHandler {
       pgnPath: string
     ) => Promise<void>
   ) => {
+    await this.z.reactA(msg, 'time_ticking');
+
     let res: Response;
     const abortCtrl = new AbortController();
     for (let retried = false; !retried; retried = true) {
@@ -241,6 +243,8 @@ export class MsgHandler {
             msg,
             `:cross_mark: Error while fetching games: ${res.statusText}\nURL: ${url}`
           );
+          await this.z.react(msg, 'cross_mark');
+          await this.z.unreact(msg, 'time_ticking');
           return;
         }
       }
@@ -345,15 +349,8 @@ export class MsgHandler {
   };
 
   public handle = async (msg: Msg): Promise<void> => {
-    await this.z.reactA(msg, 'time_ticking');
-    let runningCr = false;
-
     try {
       const cmd = parseCmd(msg);
-      runningCr =
-        cmd.type === 'ids' ||
-        cmd.type === 'recent' ||
-        cmd.type === 'tournament';
       if (cmd.type === 'invalid') await this.handleInvalid(msg, cmd.reason);
       else if (cmd.type === 'help') await this.handleHelp(msg);
       else if (cmd.type === 'status') await this.handleStatus(msg);
@@ -366,8 +363,6 @@ export class MsgHandler {
       console.error(err);
       await this.z.react(msg, 'cross_mark');
       await this.z.unreact(msg, 'time_ticking');
-    } finally {
-      if (!runningCr) await this.z.unreact(msg, 'time_ticking');
     }
   };
 }
