@@ -4,6 +4,7 @@ interface Config {
   zulip: {
     stream: string;
   };
+  mod_token?: string;
   python_bin: string;
 }
 

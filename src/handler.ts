@@ -230,7 +230,14 @@ export class MsgHandler {
     let res: Response;
     const abortCtrl = new AbortController();
     for (let retried = false; !retried; retried = true) {
-      res = await fetch(url, { ...options, signal: abortCtrl.signal });
+      const opts: RequestInit = { ...options, signal: abortCtrl.signal };
+      if (config.mod_token) {
+        opts.headers = {
+          ...(opts.headers ?? {}),
+          Authorization: `Bearer: ${config.mod_token}`,
+        };
+      }
+      res = await fetch(url, opts);
       if (!res.ok) {
         if (res.status === 429 && !retried) {
           await this.z.replyA(

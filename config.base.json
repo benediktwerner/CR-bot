@@ -2,6 +2,7 @@
   "zulip": {
     "stream": "mod-hunter-cheat"
   },
+  "mod_token": "",
   "python_bin": "./cr_env/bin/python",
   "engine": {
     "path": "./engine/stockfish_8_x64_bmi2.exe",
