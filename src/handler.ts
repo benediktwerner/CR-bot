@@ -234,7 +234,7 @@ export class MsgHandler {
       if (config.mod_token) {
         opts.headers = {
           ...(opts.headers ?? {}),
-          Authorization: `Bearer: ${config.mod_token}`,
+          Authorization: `Bearer ${config.mod_token}`,
         };
       }
       res = await fetch(url, opts);
