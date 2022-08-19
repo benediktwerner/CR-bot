@@ -55,13 +55,16 @@ export class Zulip {
           queue_id: q.queue_id,
           last_event_id: lastEventId,
         });
+
         if (res.result !== 'success') {
           console.error(
             `Got error response on events.retrieve: ${JSON.stringify(res)}`
           );
+          if (res.code === 'BAD_EVENT_QUEUE_ID') return;
           await sleep(2000);
           continue;
         }
+
         for (const event of res.events) {
           lastEventId = event.id;
           switch (event.type) {
