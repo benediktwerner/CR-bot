@@ -51,10 +51,17 @@ export class Zulip {
 
     while (true) {
       try {
+        const timeout = setTimeout(() => {
+          console.log('events.retrieve timed out. Exiting...');
+          process.exit();
+        }, (q.event_queue_longpoll_timeout_seconds ?? 90) * 1_000);
+
         const res = await this.client.events.retrieve({
           queue_id: q.queue_id,
           last_event_id: lastEventId,
         });
+
+        clearTimeout(timeout);
 
         if (res.result !== 'success') {
           console.error(
