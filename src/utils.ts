@@ -72,3 +72,13 @@ export const pipeNjdsonToFile =
       fileStream.close();
     }
   };
+
+export const determinePerfType = (mins: number, inc: number) => {
+  const estimatedSecs = mins * 60 + inc * 40;
+  if (estimatedSecs < 30) return 'ultraBullet';
+  if (estimatedSecs < 180) return 'bullet';
+  if (estimatedSecs < 480) return 'blitz';
+  if (estimatedSecs < 1500) return 'rapid';
+  if (estimatedSecs < 21600) return 'classical';
+  return 'correspondence';
+};

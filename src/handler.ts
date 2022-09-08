@@ -55,6 +55,11 @@ const playerOk = (o: any, cmd: { user: string }): boolean => {
   return o.players.white.user.id === user || o.players.black.user.id === user;
 };
 
+const tcOk = (o: any, cmd: { time_control?: string }): boolean => {
+  if (!cmd.time_control) return true;
+  return (o.pgn as string).includes(`[TimeControl "${cmd.time_control}"]`);
+};
+
 export class MsgHandler {
   private crQueue: QueuedCR[] = [];
   private crIsRunning = false;
@@ -80,6 +85,7 @@ export class MsgHandler {
         '- `@cr thibault abcdefgh ijklmnop`: Run CR report on Thibault with game IDs abcdefgh and ijklmnop. You can add up to 100 game IDs.\n' +
         '- `@cr thibault https://lichess.org/abcdefgh`: Run CR report on Thibault with the linked game.\n' +
         "- `@cr thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported speeds are `bullet`, `blitz`, `rapid`, and `classical`.\n" +
+        '- `@cr thibault recent 20 5+0`: Same but specifically only 5+0 games.\n' +
         '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
         '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp (in seconds).\n' +
         '- `@cr thibault recent 20 blitz time<2021-11-03`: Same but use 20 last games before the 3rd November 2021.\n' +
@@ -298,14 +304,19 @@ export class MsgHandler {
   handelRecent = async (msg: Msg, cmd: RecentCommand): Promise<void> => {
     const params = new URLSearchParams();
     const base_url = `https://lichess.org/api/games/user/${cmd.user}?`;
-    params.append('perfType', cmd.variant);
-    if (cmd.max_advantage) params.append('max', (cmd.count * 5).toString());
+    params.append('perfType', cmd.perfType);
+    if (cmd.max_advantage) params.append('max', '300');
     else params.append('max', cmd.count.toString());
     if (cmd.before_epoch) params.append('until', cmd.before_epoch.toString());
     if (cmd.after_epoch) params.append('since', cmd.after_epoch.toString());
     if (!cmd.with_casual) params.append('rated', 'true');
 
-    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves) {
+    if (
+      cmd.max_advantage ||
+      cmd.min_moves ||
+      cmd.max_moves ||
+      cmd.time_control
+    ) {
       params.append('pgnInJson', 'true');
       await this.fetchAndDoCR(
         msg,
@@ -317,7 +328,8 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          if (advantageOk(o, cmd) && movesOk(o, cmd)) return o.pgn;
+          if (advantageOk(o, cmd) && movesOk(o, cmd) && tcOk(o, cmd))
+            return o.pgn;
         }, cmd.count)
       );
     } else await this.fetchAndDoCR(msg, cmd, base_url + params, {}, pipeToFile);

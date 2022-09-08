@@ -1,5 +1,5 @@
 import { Msg } from 'zulip-js';
-import { formatTimestamp, parseTime } from './utils.js';
+import { determinePerfType, formatTimestamp, parseTime } from './utils.js';
 
 export interface IdsCommand {
   type: 'ids';
@@ -9,7 +9,8 @@ export interface IdsCommand {
 export interface RecentCommand {
   type: 'recent';
   user: string;
-  variant: string;
+  perfType: string;
+  time_control: { minutes: number; inc: number };
   count: number;
   with_casual?: boolean;
   before_epoch?: number;
@@ -69,11 +70,27 @@ export const parseCmd = (msg: Msg): Command => {
     let match;
     for (const arg of args.map((a) => a.toLowerCase())) {
       if (arg === 'recent') {
-      } else if (['bullet', 'blitz', 'rapid', 'classical'].includes(arg))
-        cmd.variant = arg;
-      else if (arg === '+casual') cmd.with_casual = true;
+      } else if (
+        ['bullet', 'blitz', 'rapid', 'classical', 'chess960'].includes(arg)
+      ) {
+        if (cmd.perfType === undefined) cmd.perfType = arg;
+        else if (cmd.perfType !== arg)
+          return invalid(
+            `Duplicate perf types \`${cmd.perfType}\` and \`${arg}\``
+          );
+      } else if (arg === '+casual') cmd.with_casual = true;
       else if (/^\d+$/.test(arg)) cmd.count = parseInt(arg, 10);
-      else if ((match = arg.match(/^advantage<(\d+)$/)))
+      else if ((match = arg.match(/^(\d+)\+(\d+)$/))) {
+        const [_, mins, inc] = match;
+        try {
+          cmd.time_control = {
+            minutes: Math.floor(parseInt(mins, 10) / 60),
+            inc: parseInt(inc, 10),
+          };
+        } catch (e) {
+          return invalid(`Failed to parse time control: ${arg}`);
+        }
+      } else if ((match = arg.match(/^advantage<(\d+)$/)))
         cmd.max_advantage = parseInt(match[1], 10);
       else if ((match = arg.match(/^moves(<|>)(\d+)$/))) {
         const [_, op, num] = match;
@@ -96,8 +113,15 @@ export const parseCmd = (msg: Msg): Command => {
         else cmd.after_epoch = time;
       } else return invalid(`Invalid parameter: \`${arg}\``);
     }
-    if (!('variant' in cmd)) return invalid('No variant specified');
-    if (!('count' in cmd)) return invalid('No game count specified');
+    if (cmd.perfType === undefined) {
+      if (!cmd.time_control) return invalid('No perf type specified');
+
+      cmd.perfType = determinePerfType(
+        cmd.time_control.minutes,
+        cmd.time_control.inc
+      );
+    }
+    if (cmd.count === undefined) return invalid('No game count specified');
     if (cmd.count > 100) return invalid('Max count has to be <100');
     return cmd as RecentCommand;
   } else if (args.some((a) => a.toLowerCase() === 'tournament')) {
@@ -152,7 +176,7 @@ export const formatCmd = (cmd: ValidCommand): string => {
     return `/${cmd.user} ids ${cmd.ids.join(' ')}`;
   }
   if (cmd.type === 'recent') {
-    let s = `/${cmd.user} recent ${cmd.count} ${cmd.variant}`;
+    let s = `/${cmd.user} recent ${cmd.count} ${cmd.perfType}`;
     if (cmd.with_casual) s += '+casual';
     if (cmd.after_epoch) s += ` time>${cmd.after_epoch}`;
     if (cmd.before_epoch) s += ` time<${cmd.before_epoch}`;
