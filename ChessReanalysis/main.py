@@ -30,7 +30,11 @@ def load_pgn(filename):
             if not game:
                 break
             gid = gameid(game)
-            if gid and game.headers.get("Variant") in ("Standard", "From Position"):
+            if gid and game.headers.get("Variant") in (
+                "Standard",
+                "From Position",
+                "Chess960",
+            ):
                 working_set[gid] = game
             n += 1
         print(f"Added {n} games to working set from {filename}")
