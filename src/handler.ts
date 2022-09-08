@@ -55,9 +55,14 @@ const playerOk = (o: any, cmd: { user: string }): boolean => {
   return o.players.white.user.id === user || o.players.black.user.id === user;
 };
 
-const tcOk = (o: any, cmd: { time_control?: string }): boolean => {
+const tcOk = (
+  o: any,
+  cmd: { time_control?: { minutes: number; inc: number } }
+): boolean => {
   if (!cmd.time_control) return true;
-  return (o.pgn as string).includes(`[TimeControl "${cmd.time_control}"]`);
+  return (o.pgn as string).includes(
+    `[TimeControl "${cmd.time_control.minutes}+${cmd.time_control.inc}"]`
+  );
 };
 
 export class MsgHandler {
