@@ -84,7 +84,7 @@ export const parseCmd = (msg: Msg): Command => {
         const [_, mins, inc] = match;
         try {
           cmd.time_control = {
-            minutes: Math.floor(parseInt(mins, 10) / 60),
+            minutes: parseInt(mins, 10),
             inc: parseInt(inc, 10),
           };
         } catch (e) {

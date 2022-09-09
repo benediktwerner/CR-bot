@@ -61,7 +61,7 @@ const tcOk = (
 ): boolean => {
   if (!cmd.time_control) return true;
   return (o.pgn as string).includes(
-    `[TimeControl "${cmd.time_control.minutes}+${cmd.time_control.inc}"]`
+    `[TimeControl "${cmd.time_control.minutes * 60}+${cmd.time_control.inc}"]`
   );
 };
 
