@@ -67,7 +67,7 @@ export class MsgHandler {
         '- `@cr help`: Show this help.\n' +
         '- `@cr thibault abcdefgh ijklmnop`: Run CR report on Thibault with game IDs abcdefgh and ijklmnop. You can add up to 100 game IDs.\n' +
         '- `@cr thibault https://lichess.org/abcdefgh`: Run CR report on Thibault with the linked game.\n' +
-        "- `@cr thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported perf types are `bullet`, `blitz`, `rapid`, `classical`, and `chess960`.\n" +
+        "- `@cr thibault recent 20 blitz`: Run CR report on Thibault's last 20 blitz games. Supported perf types are `bullet`, `blitz`, `rapid`, `classical`, `correspondence`, and `chess960`.\n" +
         '- `@cr thibault recent 20 5+0`: Same but specifically only 5+0 games.\n' +
         '- `@cr thibault recent 20 blitz +casual`: Same but include casual games.\n' +
         '- `@cr thibault recent 20 blitz time<1638009640`: Same but use 20 last games before the 1638009640 UNIX timestamp (in seconds).\n' +
