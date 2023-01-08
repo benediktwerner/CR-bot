@@ -70,7 +70,7 @@ export const parseCmd = (msg: Msg): Command => {
     let match;
     for (const arg of args.map((a) => a.toLowerCase())) {
       if (arg === 'recent') {
-      } else if (['bullet', 'blitz', 'rapid', 'classical', 'chess960'].includes(arg)) {
+      } else if (['bullet', 'blitz', 'rapid', 'classical', 'chess960', 'correspondence'].includes(arg)) {
         if (cmd.perfType === undefined) cmd.perfType = arg;
         else if (cmd.perfType !== arg) return invalid(`Duplicate perf types \`${cmd.perfType}\` and \`${arg}\``);
       } else if (arg === '+casual') cmd.with_casual = true;
