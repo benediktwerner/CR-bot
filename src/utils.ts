@@ -15,33 +15,26 @@ export const exec = promisify(nodeExec);
 
 export const parseTime = (s: string): number | undefined => {
   let match;
-  if ((match = s.match(/^(\d+)$/))) return parseInt(match[1], 10) * 1000;
-  else if ((match = s.match(/^\d{4}-\d{1,2}-\d{1,2}$/)))
+  if ((match = s.match(/^(\d+)$/))) {
+    return parseInt(match[1], 10) * 1000;
+  } else if ((match = s.match(/^\d{4}-\d{1,2}-\d{1,2}$/))) {
     return Date.parse(match[0]);
-  else if ((match = s.match(/^(\d+)d(ays?)?$/)))
+  } else if ((match = s.match(/^(\d+)d(ays?)?$/))) {
     return +new Date() - parseInt(match[1], 10) * 24 * 60 * 60 * 1000;
+  }
 };
 
-export const formatTimestamp = (t: number): string =>
-  new Date(t).toISOString().split('T')[0];
+export const formatTimestamp = (t: number): string => new Date(t).toISOString().split('T')[0];
 
 const streamPipeline = promisify(pipeline);
 
-export const pipeToFile = async (
-  res: Response,
-  _abortCtrl: AbortController,
-  fname: string
-): Promise<void> => {
+export const pipeToFile = async (res: Response, _abortCtrl: AbortController, fname: string): Promise<void> => {
   await streamPipeline(res.body, fs.createWriteStream(fname));
 };
 
 export const pipeNjdsonToFile =
   (filterMap: (o: any) => undefined | string, max?: number) =>
-  async (
-    res: Response,
-    abortCtrl: AbortController,
-    fname: string
-  ): Promise<void> => {
+  async (res: Response, abortCtrl: AbortController, fname: string): Promise<void> => {
     const fileStream = fs.createWriteStream(fname);
     try {
       const matcher = /\r?\n/;

@@ -4,14 +4,7 @@ import { readFile } from 'fs/promises';
 import fetch, { AbortError, RequestInit, Response } from 'node-fetch';
 import { Msg } from 'zulip-js';
 import { config } from './config.js';
-import {
-  formatCmd,
-  IdsCommand,
-  parseCmd,
-  RecentCommand,
-  TournamentCommand,
-  ValidCommand,
-} from './parser.js';
+import { formatCmd, IdsCommand, parseCmd, RecentCommand, TournamentCommand, ValidCommand } from './parser.js';
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 import { __dirname } from './utils.js';
@@ -25,14 +18,10 @@ interface QueuedCR {
 
 type RunningCR = QueuedCR & { abortCtrl: AbortController };
 
-const advantageOk = (
-  o: any,
-  cmd: { user: string; max_advantage?: number }
-): boolean => {
+const advantageOk = (o: any, cmd: { user: string; max_advantage?: number }): boolean => {
   if (!cmd.max_advantage) return true;
 
-  const playerColor =
-    o.players.white.user.id === cmd.user.toLowerCase() ? 'white' : 'black';
+  const playerColor = o.players.white.user.id === cmd.user.toLowerCase() ? 'white' : 'black';
   const player = o.players[playerColor];
   const opponent = o.players[playerColor === 'white' ? 'black' : 'white'];
   if (opponent.provisional && cmd.max_advantage < 2000) return false;
@@ -40,10 +29,7 @@ const advantageOk = (
   return false;
 };
 
-const movesOk = (
-  o: any,
-  cmd: { min_moves?: number; max_moves?: number }
-): boolean => {
+const movesOk = (o: any, cmd: { min_moves?: number; max_moves?: number }): boolean => {
   const moves = o.moves.split(' ').length;
   const min_moves = cmd.min_moves ?? 0;
   const max_moves = cmd.max_moves ?? 10000;
@@ -55,14 +41,9 @@ const playerOk = (o: any, cmd: { user: string }): boolean => {
   return o.players.white.user.id === user || o.players.black.user.id === user;
 };
 
-const tcOk = (
-  o: any,
-  cmd: { time_control?: { minutes: number; inc: number } }
-): boolean => {
+const tcOk = (o: any, cmd: { time_control?: { minutes: number; inc: number } }): boolean => {
   if (!cmd.time_control) return true;
-  return (o.pgn as string).includes(
-    `[TimeControl "${cmd.time_control.minutes * 60}+${cmd.time_control.inc}"]`
-  );
+  return (o.pgn as string).includes(`[TimeControl "${cmd.time_control.minutes * 60}+${cmd.time_control.inc}"]`);
 };
 
 export class MsgHandler {
@@ -76,10 +57,7 @@ export class MsgHandler {
   }
 
   handleInvalid = async (msg: Msg, reason: string): Promise<void> => {
-    await this.z.replyA(
-      msg,
-      `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`
-    );
+    await this.z.replyA(msg, `:cross_mark: ${reason}. Use \`@cr help\` for usage instructions.`);
   };
 
   handleHelp = async (msg: Msg): Promise<void> => {
@@ -109,20 +87,15 @@ export class MsgHandler {
 
   handleStatus = async (msg: Msg): Promise<void> => {
     let status = 'CR running: ' + this.crIsRunning;
-    if (this.currentCr !== null)
-      status += '\nCurrently running: [0] ' + formatCmd(this.currentCr.cmd);
+    if (this.currentCr !== null) status += '\nCurrently running: [0] ' + formatCmd(this.currentCr.cmd);
     if (this.crQueue.length > 0) {
       status += '\n\nQueued:';
-      for (const i in this.crQueue)
-        status += `\n[${+i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
+      for (const i in this.crQueue) status += `\n[${+i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
     }
     await this.z.replyA(msg, status);
   };
 
-  handleAbort = async (
-    msg: Msg,
-    { indexOrAll }: { indexOrAll: number | 'all' }
-  ): Promise<void> => {
+  handleAbort = async (msg: Msg, { indexOrAll }: { indexOrAll: number | 'all' }): Promise<void> => {
     if (indexOrAll === 'all') {
       for (const cr of this.crQueue) {
         this.z.react(cr.msg, 'prohibited');
@@ -184,18 +157,13 @@ export class MsgHandler {
       );
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
-        await this.z.replyA(
-          msg,
-          `:prohibited: CR request aborted: ${formatCmd(cmd)}`
-        );
+        await this.z.replyA(msg, `:prohibited: CR request aborted: ${formatCmd(cmd)}`);
         await this.z.react(msg, 'prohibited');
         return;
       } else if (typeof e === 'object' && e !== null && e.killed) {
         await this.z.replyA(
           msg,
-          `:cross_mark: Killed CR request because it didn't finish after 1 hour: ${formatCmd(
-            cmd
-          )}`
+          `:cross_mark: Killed CR request because it didn't finish after 1 hour: ${formatCmd(cmd)}`
         );
       } else {
         console.error('Exception during CR exec:');
@@ -207,9 +175,7 @@ export class MsgHandler {
     }
 
     const report = await readFile(reportPath, { encoding: 'ascii' });
-    const match = report.match(
-      new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's')
-    );
+    const match = report.match(new RegExp(`(${cmd.user.toLowerCase()}.*?)\n\n`, 's'));
     if (match) {
       await this.z.replyA(
         msg,
@@ -217,9 +183,7 @@ export class MsgHandler {
       );
       await this.z.reactA(msg, 'check');
     } else {
-      console.log(
-        `Failed to find report about ${cmd.user} in CR output:\n${report}`
-      );
+      console.log(`Failed to find report about ${cmd.user} in CR output:\n${report}`);
       await this.z.replyA(msg, ':cross_mark: No CR output');
       await this.z.react(msg, 'cross_mark');
     }
@@ -230,11 +194,7 @@ export class MsgHandler {
     cmd: ValidCommand,
     url: string,
     options: RequestInit,
-    handleResponse: (
-      res: Response,
-      abortCtrl: AbortController,
-      pgnPath: string
-    ) => Promise<void>
+    handleResponse: (res: Response, abortCtrl: AbortController, pgnPath: string) => Promise<void>
   ) => {
     await this.z.reactA(msg, 'time_ticking');
 
@@ -251,16 +211,10 @@ export class MsgHandler {
       res = await fetch(url, opts);
       if (!res.ok) {
         if (res.status === 429 && !retried) {
-          await this.z.replyA(
-            msg,
-            ':time_ticking: Rate-limited. Waiting for 10 minutes.'
-          );
+          await this.z.replyA(msg, ':time_ticking: Rate-limited. Waiting for 10 minutes.');
           await sleep(10 * 60);
         } else {
-          await this.z.replyA(
-            msg,
-            `:cross_mark: Error while fetching games: ${res.statusText}\nURL: ${url}`
-          );
+          await this.z.replyA(msg, `:cross_mark: Error while fetching games: ${res.statusText}\nURL: ${url}`);
           await this.z.react(msg, 'cross_mark');
           await this.z.unreact(msg, 'time_ticking');
           return;
@@ -268,11 +222,7 @@ export class MsgHandler {
       }
     }
 
-    const date = new Date()
-      .toISOString()
-      .replace('T', '--')
-      .replace(/:|\./g, '-')
-      .replace('Z', '');
+    const date = new Date().toISOString().replace('T', '--').replace(/:|\./g, '-').replace('Z', '');
     const reportName = `${date}--${cmd.user.replace(/[^a-zA-Z0-9_-]/g, '')}`;
     const pgnPath = `pgn/${reportName}.pgn`;
     const reportPath = `reports/${reportName}.txt`;
@@ -316,12 +266,7 @@ export class MsgHandler {
     if (cmd.after_epoch) params.append('since', cmd.after_epoch.toString());
     if (!cmd.with_casual) params.append('rated', 'true');
 
-    if (
-      cmd.max_advantage ||
-      cmd.min_moves ||
-      cmd.max_moves ||
-      cmd.time_control
-    ) {
+    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves || cmd.time_control) {
       params.append('pgnInJson', 'true');
       await this.fetchAndDoCR(
         msg,
@@ -333,27 +278,18 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          if (advantageOk(o, cmd) && movesOk(o, cmd) && tcOk(o, cmd))
-            return o.pgn;
+          if (advantageOk(o, cmd) && movesOk(o, cmd) && tcOk(o, cmd)) return o.pgn;
         }, cmd.count)
       );
     } else await this.fetchAndDoCR(msg, cmd, base_url + params, {}, pipeToFile);
   };
 
-  handleTournament = async (
-    msg: Msg,
-    cmd: TournamentCommand
-  ): Promise<void> => {
+  handleTournament = async (msg: Msg, cmd: TournamentCommand): Promise<void> => {
     const params = new URLSearchParams();
     const base_url = `https://lichess.org/api/${cmd.tournament_type}/${cmd.id}/games?`;
     params.append('player', cmd.user);
 
-    if (
-      cmd.max_advantage ||
-      cmd.min_moves ||
-      cmd.max_moves ||
-      cmd.tournament_type === 'swiss'
-    ) {
+    if (cmd.max_advantage || cmd.min_moves || cmd.max_moves || cmd.tournament_type === 'swiss') {
       params.append('pgnInJson', 'true');
       await this.fetchAndDoCR(
         msg,
@@ -365,8 +301,7 @@ export class MsgHandler {
           },
         },
         pipeNjdsonToFile((o) => {
-          if (advantageOk(o, cmd) && movesOk(o, cmd) && playerOk(o, cmd))
-            return o.pgn;
+          if (advantageOk(o, cmd) && movesOk(o, cmd) && playerOk(o, cmd)) return o.pgn;
         })
       );
     } else await this.fetchAndDoCR(msg, cmd, base_url + params, {}, pipeToFile);
