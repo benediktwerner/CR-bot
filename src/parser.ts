@@ -108,12 +108,12 @@ export const parseCmd = (msg: Msg): Command => {
     if (cmd.count === undefined) return invalid('No game count specified');
     if (cmd.count > 100) return invalid('Max count has to be <100');
     return cmd as RecentCommand;
-  } else if (args.some((a) => a.toLowerCase() === 'tournament')) {
+  } else if (args.some((a) => a.toLowerCase() === 'tournament' || a.toLowerCase() === 'swiss')) {
     let cmd = { type: 'tournament', user } as Partial<TournamentCommand>;
     let match;
     for (const arg of args) {
       const argLower = arg.toLowerCase();
-      if (argLower === 'tournament') {
+      if (argLower === 'tournament' || argLower === 'swiss') {
       } else if ((match = arg.match(/^https:\/\/lichess.org\/(tournament|swiss)\/([a-zA-Z0-9]{8})$/))) {
         const [_, typ, id] = match;
         cmd.id = id;
