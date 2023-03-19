@@ -12,7 +12,12 @@ import { Zulip } from './zulip.js';
 
   const handler = new MsgHandler(zulip);
   while (true) {
-    await zulip.eventLoop(narrow, handler);
+    try {
+      await zulip.eventLoop(narrow, handler);
+    } catch (e) {
+      console.error('Error in eventLoop:');
+      console.error(e);
+    }
     await sleep(10_000);
   }
 })();
