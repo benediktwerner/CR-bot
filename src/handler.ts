@@ -86,8 +86,9 @@ export class MsgHandler {
   };
 
   handleStatus = async (msg: Msg): Promise<void> => {
-    let status = 'CR running: ' + this.crIsRunning;
-    if (this.currentCr !== null) status += '\nCurrently running: [0] ' + formatCmd(this.currentCr.cmd);
+    let status;
+    if (this.currentCr !== null) status = 'Currently running: [0] ' + formatCmd(this.currentCr.cmd);
+    else status = 'No active or queued requests';
     if (this.crQueue.length > 0) {
       status += '\n\nQueued:';
       for (const i in this.crQueue) status += `\n[${+i + 1}] ${formatCmd(this.crQueue[i].cmd)}`;
