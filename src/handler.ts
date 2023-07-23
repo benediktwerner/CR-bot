@@ -8,6 +8,7 @@ import { formatCmd, IdsCommand, parseCmd, RecentCommand, TournamentCommand, Vali
 import { exec, pipeNjdsonToFile, pipeToFile, sleep } from './utils.js';
 import { Zulip } from './zulip.js';
 import { __dirname } from './utils.js';
+import { happyEyeballsHttpAgent, happyEyeballsHttpsAgent } from './agent.js';
 
 interface QueuedCR {
   msg: Msg;
@@ -202,14 +203,14 @@ export class MsgHandler {
     let res: Response;
     const abortCtrl = new AbortController();
     for (let retried = false; !retried; retried = true) {
-      const opts: RequestInit = { ...options, signal: abortCtrl.signal };
+      options.signal = abortCtrl.signal;
+      options.agent = (parsedUrl: any) =>
+        parsedUrl.protocol === 'https:' ? happyEyeballsHttpsAgent : happyEyeballsHttpAgent;
       if (config.mod_token) {
-        opts.headers = {
-          ...(opts.headers ?? {}),
-          Authorization: `Bearer ${config.mod_token}`,
-        };
+        if (!options.headers) options.headers = {};
+        options.headers.Authorization = `Bearer ${config.mod_token}`;
       }
-      res = await fetch(url, opts);
+      res = await fetch(url, options);
       if (!res.ok) {
         if (res.status === 429 && !retried) {
           await this.z.replyA(msg, ':time_ticking: Rate-limited. Waiting for 10 minutes.');
